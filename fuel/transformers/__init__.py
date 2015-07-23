@@ -431,6 +431,21 @@ class ForceFloatX(AgnosticSourcewiseTransformer):
         return source_data
 
 
+class ForceArray(Transformer):
+    """Force all floating point numpy arrays to be floatX."""
+    def __init__(self, data_stream, **kwargs):
+        if data_stream.axis_labels:
+            kwargs.setdefault('axis_labels', data_stream.axis_labels.copy())
+        super(ForceArray, self).__init__(
+            data_stream, data_stream.produces_examples, **kwargs)
+
+    def get_data(self, request=None):
+        if request is not None:
+            raise ValueError
+        data = next(self.child_epoch_iterator)
+        return tuple(numpy.asarray(p) for p in data)
+
+
 class Filter(Transformer):
     """Filters samples that meet a predicate.
 
