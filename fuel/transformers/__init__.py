@@ -677,9 +677,14 @@ class Padding(Transformer):
     mask_dtype: str, optional
         data type of masks. If not provided, floatX from config will
         be used.
+    batch_dim_is_first: bool, optional
+        If True (default) after padding the first dimension is the batch.
+        If False, the first dimension will remain length, and batch will
+        be the second dimension.
 
     """
     def __init__(self, data_stream, mask_sources=None, mask_dtype=None,
+                 batch_dim_is_first=True,
                  **kwargs):
         if data_stream.produces_examples:
             raise ValueError('the wrapped data stream must produce batches of '
@@ -693,6 +698,7 @@ class Padding(Transformer):
             self.mask_dtype = config.floatX
         else:
             self.mask_dtype = mask_dtype
+        self.batch_dim_is_first = batch_dim_is_first
 
     @property
     def sources(self):
@@ -719,17 +725,26 @@ class Padding(Transformer):
                 raise ValueError("All dimensions except length must be equal")
             dtype = numpy.asarray(source_batch[0]).dtype
 
-            padded_batch = numpy.zeros(
-                (len(source_batch), max_sequence_length) + rest_shape,
-                dtype=dtype)
-            for i, sample in enumerate(source_batch):
-                padded_batch[i, :len(sample)] = sample
+            if self.batch_dim_is_first:
+                padded_batch = numpy.zeros(
+                    (len(source_batch), max_sequence_length) + rest_shape,
+                    dtype=dtype)
+                for i, sample in enumerate(source_batch):
+                    padded_batch[i, :len(sample)] = sample
+            else:
+                padded_batch = numpy.zeros(
+                    (max_sequence_length, len(source_batch)) + rest_shape,
+                    dtype=dtype)
+                for i, sample in enumerate(source_batch):
+                    padded_batch[:len(sample), i] = sample
             batch_with_masks.append(padded_batch)
 
             mask = numpy.zeros((len(source_batch), max_sequence_length),
                                self.mask_dtype)
             for i, sequence_length in enumerate(lengths):
                 mask[i, :sequence_length] = 1
+            if not self.batch_dim_is_first:
+                mask = mask.T
             batch_with_masks.append(mask)
         return tuple(batch_with_masks)
 
