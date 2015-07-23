@@ -209,12 +209,13 @@ class ServerDataStream(AbstractDataStream):
 
     """
     def __init__(self, sources, produces_examples, host='localhost', port=5557,
-                 hwm=10, axis_labels=None):
+                 hwm=10, axis_labels=None, connection_string=None):
         super(ServerDataStream, self).__init__(axis_labels=axis_labels)
         self.sources = sources
         self.produces_examples = produces_examples
         self.host = host
         self.port = port
+        self.connection_string = connection_string
         self.hwm = hwm
         self.connect()
 
@@ -222,7 +223,10 @@ class ServerDataStream(AbstractDataStream):
         context = zmq.Context()
         self.socket = socket = context.socket(zmq.PULL)
         socket.set_hwm(self.hwm)
-        socket.connect("tcp://{}:{}".format(self.host, self.port))
+        if self.connection_string is not None:
+            socket.connect(self.connection_string)
+        else:
+            socket.connect("tcp://{}:{}".format(self.host, self.port))
         self.connected = True
 
     def get_data(self, request=None):

@@ -81,7 +81,7 @@ def recv_arrays(socket):
     return arrays
 
 
-def start_server(data_stream, port=5557, hwm=10):
+def start_server(data_stream, port=5557, hwm=10, connection_string=None):
     """Start a data processing server.
 
     This command starts a server in the current process that performs the
@@ -113,7 +113,11 @@ def start_server(data_stream, port=5557, hwm=10):
     context = zmq.Context()
     socket = context.socket(zmq.PUSH)
     socket.set_hwm(hwm)
-    socket.bind('tcp://*:{}'.format(port))
+    if connection_string is not None:
+        socket.connect(connection_string)
+    else:
+        socket.bind('tcp://*:{}'.format(port))
+
 
     it = data_stream.get_epoch_iterator()
 
